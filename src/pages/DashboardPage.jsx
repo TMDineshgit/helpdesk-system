@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -9,31 +9,37 @@ import {
 import StatCard from '../components/ui/StatCard';
 import StatusBadge from '../components/ui/StatusBadge';
 import { mockTickets } from '../data/mockTickets';
+import useDebounce from '../hooks/useDebounce';
+import  useModal  from '../hooks/useModal';
+import usePagination from '../hooks/usePagination';
 
 function Dashboard() {
-  const openTickets = mockTickets.filter(
-    (ticket) => ticket.status === 'OPEN',
-  ).length;
-
-  const pendingTickets = mockTickets.filter(
-    (ticket) => ticket.status === 'PENDING',
-  ).length;
-
-  const resolvedTickets = mockTickets.filter(
-    (ticket) => ticket.status === 'RESOLVED',
-  ).length;
-
-  const highPriorityTickets = mockTickets.filter(
-    (ticket) => ticket.priority === 'HIGH',
-  ).length;
+  const ticketStats = useMemo(() => {
+    return {
+      open: mockTickets.filter((ticket) => ticket.status === 'OPEN').length,
+      pending: mockTickets.filter((ticket) => ticket.status === 'PENDING').length,
+      resolved: mockTickets.filter((ticket) => ticket.status === 'RESOLVED').length,
+      highPriority: mockTickets.filter((ticket) => ticket.priority === 'HIGH').length,
+    };
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const { isOpen, openModal, closeModal } = useModal();
+  
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const filteredTickets = mockTickets.filter((ticket) =>
     ticket.subject
       .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
+      .includes(debouncedSearchTerm.toLowerCase()),
   );
+
+  const { currentPage, totalPages, paginatedItems, nextPage, previousPage, goToPage } = usePagination(filteredTickets, 5);  
+
+  const handleSearchChange = useCallback((event) => {
+    setSearchTerm(event.target.value);
+  }, []);
+  
 
   return (
     <div className="space-y-6">
@@ -50,28 +56,28 @@ function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Open Tickets"
-          value={openTickets}
+          value={ticketStats.openTickets}
           description="Need attention"
           icon={ClipboardList}
         />
 
         <StatCard
           title="Pending Tickets"
-          value={pendingTickets}
+          value={ticketStats.pendingTickets}
           description="Waiting for action"
           icon={Clock}
         />
 
         <StatCard
           title="Resolved Tickets"
-          value={resolvedTickets}
+          value={ticketStats.resolvedTickets}
           description="Successfully resolved"
           icon={CheckCircle}
         />
 
         <StatCard
           title="High Priority"
-          value={highPriorityTickets}
+          value={ticketStats.highPriorityTickets}
           description="Require attention"
           icon={AlertTriangle}
         />
@@ -87,7 +93,7 @@ function Dashboard() {
               type="text"
               placeholder="Enter ticket's subject..."
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={handleSearchChange}
               className="w-full h-[36px] font-sm px-3 py-2 leading-relaxed rounded-lg border border-slate-300 p-3 min-w-[320px]"
             />
           </div>
@@ -106,7 +112,7 @@ function Dashboard() {
             </thead>
 
             <tbody>
-              {filteredTickets.map((ticket) => (
+              {paginatedItems.map((ticket) => (
                 <tr
                   key={ticket.id}
                   className="border-b border-slate-100"
@@ -130,8 +136,62 @@ function Dashboard() {
               ))}
             </tbody>
           </table>
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <button
+                type="button"
+                onClick={openModal}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white"
+              >
+                Modal
+            </button>
+            </div>
+            <div>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={previousPage}
+                  disabled={currentPage === 1}
+                  className={`rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50 ${currentPage === 1 ? 'cursor-not-allowed bg-gray-300/30' : 'cursor-pointer text-white bg-blue-400 hover:bg-blue-700'}`}
+                >
+                  Previous
+                </button>
+
+                <span className="text-sm text-slate-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                  className={`rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50 ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-300/30' : 'cursor-pointer text-white bg-blue-400 hover:bg-blue-700'}`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+          
         </div>
       </div>
+      {isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40">
+          <div className="rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-xl font-bold">
+              Ticket Actions
+            </h2>
+
+            <button
+              type="button"
+              onClick={closeModal}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-white"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
