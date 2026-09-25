@@ -9,6 +9,7 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-20',
     slaBreached: true,
+    description: 'User is unable to log in to the corporate portal despite entering valid credentials.',
   },
 
   {
@@ -21,6 +22,7 @@ export const mockTickets = [
     agent: 'Karthik',
     createdAt: '2026-09-19',
     slaBreached: false,
+    description: 'VPN connection drops repeatedly and the user is unable to establish a stable remote session.',
   },
 
   {
@@ -33,6 +35,7 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-18',
     slaBreached: false,
+    description: 'User reports that email sync is failing and messages are not loading in the desktop client.',
   },
 
   {
@@ -45,6 +48,7 @@ export const mockTickets = [
     agent: 'Karthik',
     createdAt: '2026-09-17',
     slaBreached: true,
+    description: 'Application response time has slowed dramatically, affecting normal day-to-day workflow.',
   },
 
   {
@@ -57,6 +61,7 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-16',
     slaBreached: false,
+    description: 'User requested a password reset and confirmed the account access was restored successfully.',
   },
 
   {
@@ -69,6 +74,7 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-20',
     slaBreached: true,
+    description: 'User reports repeated sign-in failures and is unable to access the company dashboard.',
   },
 
   {
@@ -81,6 +87,7 @@ export const mockTickets = [
     agent: 'Karthik',
     createdAt: '2026-09-19',
     slaBreached: false,
+    description: 'The user is intermittently disconnected from the VPN and is unable to complete work remotely.',
   },
 
   {
@@ -93,6 +100,7 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-18',
     slaBreached: false,
+    description: 'Email service was restored after troubleshooting; user is now receiving messages normally.',
   },
 
   {
@@ -105,6 +113,7 @@ export const mockTickets = [
     agent: 'Karthik',
     createdAt: '2026-09-17',
     slaBreached: true,
+    description: 'The application is taking too long to load pages and is impacting productivity across tasks.',
   },
 
   {
@@ -117,5 +126,6 @@ export const mockTickets = [
     agent: 'Dinesh',
     createdAt: '2026-09-16',
     slaBreached: false,
+    description: 'The password reset process was completed and the user confirmed access was restored.',
   },
 ];
