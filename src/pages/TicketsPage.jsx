@@ -4,14 +4,21 @@ import { Link } from 'react-router-dom';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 
-import { mockTickets } from '../data/mockTickets';
-
 import useDebounce from '../hooks/useDebounce';
 import usePagination from '../hooks/usePagination';
 
 import useFilterStore from '../store/useFilterStore';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectTicket } from '../store/TicketSlices/ticketSlice';
 
 function Tickets() {
+
+  const dispatch = useDispatch();
+
+  const selectedTicketId = useSelector(
+  (state) => state.tickets.tickets
+);
+
   // Zustand filter state
   const {
     search,
@@ -32,7 +39,7 @@ function Tickets() {
   const filteredTickets = useMemo(() => {
     const searchValue = debouncedSearch.toLowerCase().trim();
 
-    return mockTickets.filter((ticket) => {
+    return reduxTickets.filter((ticket) => {
       const matchesSearch =
         !searchValue ||
         ticket.id.toLowerCase().includes(searchValue) ||
@@ -59,6 +66,7 @@ function Tickets() {
       );
     });
   }, [
+    reduxTickets,
     debouncedSearch,
     status,
     priority,
