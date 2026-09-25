@@ -1,4 +1,3 @@
-
 export const mockTickets = [
   {
     id: 'TKT-1001',
@@ -9,7 +8,9 @@ export const mockTickets = [
     requester: 'Arun Kumar',
     agent: 'Dinesh',
     createdAt: '2026-09-20',
+    slaBreached: true,
   },
+
   {
     id: 'TKT-1002',
     subject: 'VPN connection issue',
@@ -19,7 +20,9 @@ export const mockTickets = [
     requester: 'Priya',
     agent: 'Karthik',
     createdAt: '2026-09-19',
+    slaBreached: false,
   },
+
   {
     id: 'TKT-1003',
     subject: 'Email not working',
@@ -29,7 +32,9 @@ export const mockTickets = [
     requester: 'Ravi',
     agent: 'Dinesh',
     createdAt: '2026-09-18',
+    slaBreached: false,
   },
+
   {
     id: 'TKT-1004',
     subject: 'Application is slow',
@@ -39,7 +44,9 @@ export const mockTickets = [
     requester: 'Meena',
     agent: 'Karthik',
     createdAt: '2026-09-17',
+    slaBreached: true,
   },
+
   {
     id: 'TKT-1005',
     subject: 'Password reset request',
@@ -49,7 +56,9 @@ export const mockTickets = [
     requester: 'Suresh',
     agent: 'Dinesh',
     createdAt: '2026-09-16',
+    slaBreached: false,
   },
+
   {
     id: 'TKT-1006',
     subject: 'Unable to login',
@@ -59,7 +68,9 @@ export const mockTickets = [
     requester: 'Arun Kumar',
     agent: 'Dinesh',
     createdAt: '2026-09-20',
+    slaBreached: true,
   },
+
   {
     id: 'TKT-1007',
     subject: 'VPN connection issue',
@@ -69,7 +80,9 @@ export const mockTickets = [
     requester: 'Priya',
     agent: 'Karthik',
     createdAt: '2026-09-19',
+    slaBreached: false,
   },
+
   {
     id: 'TKT-1008',
     subject: 'Email not working',
@@ -79,7 +92,9 @@ export const mockTickets = [
     requester: 'Ravi',
     agent: 'Dinesh',
     createdAt: '2026-09-18',
+    slaBreached: false,
   },
+
   {
     id: 'TKT-1009',
     subject: 'Application is slow',
@@ -89,7 +104,9 @@ export const mockTickets = [
     requester: 'Meena',
     agent: 'Karthik',
     createdAt: '2026-09-17',
+    slaBreached: true,
   },
+
   {
     id: 'TKT-1010',
     subject: 'Password reset request',
@@ -99,5 +116,6 @@ export const mockTickets = [
     requester: 'Suresh',
     agent: 'Dinesh',
     createdAt: '2026-09-16',
+    slaBreached: false,
   },
 ];

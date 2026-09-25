@@ -5,7 +5,7 @@ import {
   ClipboardList,
   Clock,
 } from 'lucide-react';
-
+import { Link } from 'react-router-dom';
 import StatCard from '../components/ui/StatCard';
 import StatusBadge from '../components/ui/StatusBadge';
 import { mockTickets } from '../data/mockTickets';
@@ -20,6 +20,7 @@ function Dashboard() {
       pending: mockTickets.filter((ticket) => ticket.status === 'PENDING').length,
       resolved: mockTickets.filter((ticket) => ticket.status === 'RESOLVED').length,
       highPriority: mockTickets.filter((ticket) => ticket.priority === 'HIGH').length,
+      slaBreached: mockTickets.filter((ticket) => ticket.slaBreached).length,
     };
   }, []);
 
@@ -39,7 +40,6 @@ function Dashboard() {
   const handleSearchChange = useCallback((event) => {
     setSearchTerm(event.target.value);
   }, []);
-  
 
   return (
     <div className="space-y-6">
@@ -53,34 +53,114 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard
           title="Open Tickets"
-          value={ticketStats.openTickets}
+          value={ticketStats.open}
           description="Need attention"
           icon={ClipboardList}
         />
 
         <StatCard
           title="Pending Tickets"
-          value={ticketStats.pendingTickets}
+          value={ticketStats.pending}
           description="Waiting for action"
           icon={Clock}
         />
 
         <StatCard
           title="Resolved Tickets"
-          value={ticketStats.resolvedTickets}
+          value={ticketStats.resolved}
           description="Successfully resolved"
           icon={CheckCircle}
         />
 
         <StatCard
           title="High Priority"
-          value={ticketStats.highPriorityTickets}
+          value={ticketStats.highPriority}
           description="Require attention"
           icon={AlertTriangle}
         />
+
+         <StatCard
+          title="SLA Breached"
+          value={ticketStats.slaBreached}
+          description="Missed deadlines"
+          icon={Clock}
+        />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="text-lg font-semibold text-slate-900">
+          Tickets by Status
+        </h2>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>Open</span>
+              <span>{ticketStats.open}</span>
+            </div>
+
+            <div className="h-3 rounded-full bg-slate-100">
+              <div
+                className="h-3 rounded-full bg-blue-500"
+                style={{
+                  width: `${(ticketStats.open / mockTickets.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>Pending</span>
+              <span>{ticketStats.pending}</span>
+            </div>
+
+            <div className="h-3 rounded-full bg-slate-100">
+              <div
+                className="h-3 rounded-full bg-yellow-500"
+                style={{
+                  width: `${(ticketStats.pending / mockTickets.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>Resolved</span>
+              <span>{ticketStats.resolved}</span>
+            </div>
+
+            <div className="h-3 rounded-full bg-slate-100">
+              <div
+                className="h-3 rounded-full bg-green-500"
+                style={{
+                  width: `${(ticketStats.resolved / mockTickets.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+          
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>SLA Breached</span>
+              <span>{ticketStats.slaBreached}</span>
+            </div>
+
+            <div className="h-3 rounded-full bg-slate-100">
+              <div
+                className="h-3 rounded-full bg-red-500"
+                style={{
+                  width: `${(ticketStats.slaBreached / mockTickets.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5">
@@ -118,7 +198,9 @@ function Dashboard() {
                   className="border-b border-slate-100"
                 >
                   <td className="px-3 py-3 font-medium">
-                    {ticket.id}
+                    <Link to={`/tickets/${ticket.id}`} className="text-blue-500 hover:underline"> 
+                      {ticket.id}
+                    </Link>
                   </td>
 
                   <td className="px-3 py-3">

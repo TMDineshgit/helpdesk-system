@@ -1,18 +1,19 @@
 
 import {
-  BarChart3,
   ClipboardList,
-  FileText,
+  ChartColumn,
   Settings,
   Users,
+  Gauge,
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router-dom'
+import useUiStore from '../../store/useUiStore';
 
 const menuItems = [
   {
     label: 'Dashboard',
     path: '/dashboard',
-    icon: BarChart3,
+    icon: Gauge,
   },
   {
     label: 'Tickets',
@@ -20,9 +21,9 @@ const menuItems = [
     icon: ClipboardList,
   },
   {
-    label: 'Knowledge Base',
-    path: '/knowledge-base',
-    icon: FileText,
+    label: 'Reports',
+    path: '/reports',
+    icon: ChartColumn,
   },
   {
     label: 'Users',
@@ -37,15 +38,26 @@ const menuItems = [
 ];
 
 function Sidebar() {
-  return (
-    <aside className="w-64 shrink-0 bg-slate-900 p-4 text-white">
-      <div className="mb-8 px-3">
-        <h2 className="text-xl font-bold">SupportHub</h2>
-        <p className="text-sm text-slate-400">
-          Admin Portal
-        </p>
-      </div>
 
+  const isSidebarOpen = useUiStore((state) => state.isSidebarOpen);
+
+  return (
+    <aside className={isSidebarOpen ? 'w-64 shrink-0 bg-slate-900 p-4 text-white' : 'w-20 shrink-0 bg-slate-900 p-4 text-white'}>
+      {
+        isSidebarOpen ? (
+          <div className="mb-8 px-3">
+            <h2 className="text-xl font-bold">SupportHub</h2>
+            <p className="text-sm text-slate-400">
+              Admin Portal
+            </p>
+          </div>
+        ) : (
+          <div className="mb-8 flex justify-center">
+            <h2 className="text-xl font-bold">SH</h2>
+          </div>
+        )  
+      }
+    
       <nav className="space-y-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -63,7 +75,7 @@ function Sidebar() {
               }
             >
               <Icon size={18} />
-              <span>{item.label}</span>
+              { isSidebarOpen && <span>{item.label}</span>}
             </NavLink>
           );
         })}
