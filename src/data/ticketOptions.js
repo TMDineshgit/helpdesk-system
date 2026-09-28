@@ -1,0 +1,1 @@
+export const TICKET_STATUSES = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];

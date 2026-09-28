@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import StatusBadge from '../components/ui/StatusBadge';
@@ -9,11 +9,29 @@ import usePagination from '../hooks/usePagination';
 
 import useFilterStore from '../store/useFilterStore';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectTicket } from '../store/TicketSlices/ticketSlice';
+import {
+  selectAllTickets,
+  selectSelectedTicketIds,
+} from '../store/TicketSlices/ticketSelectors';
+import {
+  changeTicketStatus,
+  toggleTicketSelection,
+  selectAllVisibleTickets,
+  clearSelectedTickets,
+  bulkUpdateStatus,
+  deleteTicket,
+} from '../store/TicketSlices/ticketSlice';
+
+import { TICKET_STATUSES } from '../data/ticketOptions';
 
 function Tickets() {
 
   const dispatch = useDispatch();
+
+  const tickets = useSelector(selectAllTickets);
+  const selectedTicketIds = useSelector(selectSelectedTicketIds);
+
+  const [bulkStatus, setBulkStatus] = useState('RESOLVED');
 
   const selectedTicketId = useSelector(
   (state) => state.tickets.tickets
@@ -39,7 +57,7 @@ function Tickets() {
   const filteredTickets = useMemo(() => {
     const searchValue = debouncedSearch.toLowerCase().trim();
 
-    return reduxTickets.filter((ticket) => {
+    return tickets.filter((ticket) => {
       const matchesSearch =
         !searchValue ||
         ticket.id.toLowerCase().includes(searchValue) ||
@@ -66,7 +84,7 @@ function Tickets() {
       );
     });
   }, [
-    reduxTickets,
+    tickets,
     debouncedSearch,
     status,
     priority,
@@ -82,6 +100,12 @@ function Tickets() {
     previousPage,
     goToPage,
   } = usePagination(filteredTickets, 5);
+
+  const visibleIds = paginatedItems.map((ticket) => ticket.id);
+
+  const allVisibleSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selectedTicketIds.includes(id));
 
   useEffect(() => {
     // Reset to first page when filters change
@@ -192,6 +216,43 @@ function Tickets() {
           {filteredTickets.length} tickets
         </div>
 
+        {/* Bulk toolbar: only shows when something is ticked */}
+        {selectedTicketIds.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-blue-50 px-4 py-3 text-sm">
+            <span className="font-medium text-blue-800">
+              {selectedTicketIds.length} selected
+            </span>
+
+            <select
+              value={bulkStatus}
+              onChange={(event) => setBulkStatus(event.target.value)}
+              className="h-9 rounded-lg border border-slate-300 px-3 text-sm"
+            >
+              {TICKET_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => dispatch(bulkUpdateStatus(bulkStatus))}
+              className="h-9 rounded-lg bg-blue-600 px-4 text-white hover:bg-blue-700"
+            >
+              Apply status to selected
+            </button>
+
+            <button
+              type="button"
+              onClick={() => dispatch(clearSelectedTickets())}
+              className="ml-auto text-slate-500 hover:underline"
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
+
         {/* Empty State */}
         {paginatedItems.length === 0 ? (
           <div className="mt-5">
@@ -203,12 +264,25 @@ function Tickets() {
             <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="border-b border-slate-200 text-slate-500">
                 <tr>
+                  <th className="px-3 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={() =>
+                        allVisibleSelected
+                          ? dispatch(clearSelectedTickets())
+                          : dispatch(selectAllVisibleTickets(visibleIds))
+                      }
+                    />
+                  </th>
                   <th className="px-3 py-3">ID</th>
                   <th className="px-3 py-3">Subject</th>
                   <th className="px-3 py-3">Category</th>
                   <th className="px-3 py-3">Priority</th>
                   <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Change Status</th>
                   <th className="px-3 py-3">Agent</th>
+                  <th className="px-3 py-3">Action</th>
                 </tr>
               </thead>
 
@@ -218,6 +292,16 @@ function Tickets() {
                     key={ticket.id}
                     className="border-b border-slate-100 hover:bg-slate-50"
                   >
+
+                    {/* first cell in the row */}
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedTicketIds.includes(ticket.id)}
+                        onChange={() => dispatch(toggleTicketSelection(ticket.id))}
+                      />
+                    </td>
+
                     {/* Ticket ID */}
                     <td className="px-3 py-3 font-medium">
                       <Link
@@ -248,9 +332,53 @@ function Tickets() {
                       <StatusBadge status={ticket.status} />
                     </td>
 
+                    <td className="px-3 py-3">
+                      <select
+                        value={ticket.status}
+                        onChange={(event) =>
+                          dispatch(changeTicketStatus({ ticketId: ticket.id, newStatus: event.target.value }))
+                        }
+                        className="h-8 rounded-md border border-slate-300 px-2 text-xs"
+                      >
+                        {TICKET_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
                     {/* Agent */}
                     <td className="px-3 py-3">
                       {ticket.agent}
+                    </td>
+
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <Link
+                        to={`/tickets/${ticket.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </Link>
+                       <button
+                        type="button"
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `Are you sure you want to delete ${ticket.id}?`
+                          );
+
+                          if (confirmed) {
+                            dispatch(deleteTicket(ticket.id));
+                          }
+                        }}
+                        className="text-sm font-medium text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                      </div>
+                      
+                     
                     </td>
                   </tr>
                 ))}

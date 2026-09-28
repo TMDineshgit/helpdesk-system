@@ -13,6 +13,7 @@ import PageNotFound from './pages/PageNotFound';
 import TicketsPage from './pages/TicketsPage';
 import TicketDetails from './pages/TicketDetails';
 import CreateTicket from './pages/CreateTicket';
+import UpdateTicket from './pages/UpdateTicket';
 import Users from './pages/Users';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -30,7 +31,7 @@ function App() {
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/tickets/new" element={<CreateTicket />} />
           <Route path="/tickets/:ticketId" element={<TicketDetails />} />
-
+          <Route path="/tickets/:ticketId/edit" element={<UpdateTicket />} />
           <Route path="/knowledge-base" element={<div>Knowledge Base</div>}/>
 
           <Route path="/users" element={<Users />} />
