@@ -1,43 +1,59 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+} from '@tanstack/react-table';
 
-import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
+import { getTicketColumns } from '../components/tickets/TicketColumns';
 
 import useDebounce from '../hooks/useDebounce';
-import usePagination from '../hooks/usePagination';
-
 import useFilterStore from '../store/useFilterStore';
+
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  selectAllTickets,
   selectSelectedTicketIds,
 } from '../store/TicketSlices/ticketSelectors';
+import { useTickets } from '../hooks/useTickets';
 import {
   changeTicketStatus,
-  toggleTicketSelection,
-  selectAllVisibleTickets,
-  clearSelectedTickets,
   bulkUpdateStatus,
-  deleteTicket,
+  clearSelectedTickets,
+  deleteTicket, setSelectedTickets
 } from '../store/TicketSlices/ticketSlice';
 
 import { TICKET_STATUSES } from '../data/ticketOptions';
 
 function Tickets() {
-
   const dispatch = useDispatch();
+  const EMPTY_TICKETS = [];
 
-  const tickets = useSelector(selectAllTickets);
+  // Redux: ticket data + checkbox selection
+  //const tickets = useSelector(selectAllTickets);
+  const {
+    data: tickets = EMPTY_TICKETS,
+    isPending,
+    isError,
+    error,
+    isFetching,
+    refetch,
+  } = useTickets();
   const selectedTicketIds = useSelector(selectSelectedTicketIds);
 
+  // Local state: which status is chosen in the bulk dropdown
   const [bulkStatus, setBulkStatus] = useState('RESOLVED');
 
-  const selectedTicketId = useSelector(
-  (state) => state.tickets.tickets
-);
+  // Local state: TanStack reads and updates the sorting through this
+  const [sorting, setSorting] = useState([]);
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
 
-  // Zustand filter state
+  // Zustand: filter values
   const {
     search,
     status,
@@ -50,79 +66,94 @@ function Tickets() {
     resetFilters,
   } = useFilterStore();
 
-  // Debounce search input
   const debouncedSearch = useDebounce(search, 500);
 
-  // Filter tickets
-  const filteredTickets = useMemo(() => {
-    const searchValue = debouncedSearch.toLowerCase().trim();
+  // Column definitions (must be created BEFORE the table uses them)
+  const columns = useMemo(
+    () =>
+      getTicketColumns({
+        onChangeStatus: (ticketId, newStatus) =>
+          dispatch(changeTicketStatus({ ticketId, newStatus })),
+          onDelete: (id) => {
+          // Ask first: delete can't be undone
+          if (window.confirm(`Delete ticket ${id}?`)) {
+            dispatch(deleteTicket(id));
+          }
+        },
+      }),
+    [dispatch]
+  );
 
-    return tickets.filter((ticket) => {
-      const matchesSearch =
-        !searchValue ||
-        ticket.id.toLowerCase().includes(searchValue) ||
-        ticket.subject.toLowerCase().includes(searchValue) ||
-        ticket.category.toLowerCase().includes(searchValue) ||
-        ticket.priority.toLowerCase().includes(searchValue) ||
-        ticket.status.toLowerCase().includes(searchValue) ||
-        ticket.agent.toLowerCase().includes(searchValue);
+  // Turn Zustand dropdown values into TanStack's filter format
+  const columnFilters = useMemo(() => {
+    const filters = [];
+    if (status !== 'ALL') filters.push({ id: 'status', value: status });
+    if (priority !== 'ALL') filters.push({ id: 'priority', value: priority });
+    if (category !== 'ALL') filters.push({ id: 'category', value: category });
+    return filters;
+  }, [status, priority, category]);
 
-      const matchesStatus =
-        status === 'ALL' || ticket.status === status;
+    // Redux ids ['TKT-1', 'TKT-2']  ->  TanStack format { 'TKT-1': true, 'TKT-2': true }
+  const rowSelection = useMemo(
+    () => Object.fromEntries(selectedTicketIds.map((id) => [id, true])),
+    [selectedTicketIds]
+  );
 
-      const matchesPriority =
-        priority === 'ALL' || ticket.priority === priority;
+  // TanStack tells us the new selection; we save it in Redux
+  const handleRowSelectionChange = (updater) => {
+    const next = typeof updater === 'function' ? updater(rowSelection) : updater;
+    dispatch(setSelectedTickets(Object.keys(next).filter((id) => next[id])));
+  };
 
-      const matchesCategory =
-        category === 'ALL' || ticket.category === category;
+  const table = useReactTable({
+    data: tickets,
+    columns,
+    getRowId: (row) => row.id,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter: debouncedSearch,
+      rowSelection,
+      columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onRowSelectionChange: handleRowSelectionChange,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 5 } },
+  });
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesPriority &&
-        matchesCategory
-      );
-    });
-  }, [
-    tickets,
-    debouncedSearch,
-    status,
-    priority,
-    category,
-  ]);
+  const filteredCount = table.getFilteredRowModel().rows.length;
 
-  // Pagination
-  const {
-    currentPage,
-    totalPages,
-    paginatedItems,
-    nextPage,
-    previousPage,
-    goToPage,
-  } = usePagination(filteredTickets, 5);
+  if (isPending) {
+    return <div className="p-6 text-slate-500">Loading tickets…</div>;
+  }
 
-  const visibleIds = paginatedItems.map((ticket) => ticket.id);
+   if (isError) {
+    return (
+      <div className="space-y-3 p-6">
+        <p className="text-red-600">Something went wrong: {error.message}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-  const allVisibleSelected =
-    visibleIds.length > 0 &&
-    visibleIds.every((id) => selectedTicketIds.includes(id));
-
-  useEffect(() => {
-    // Reset to first page when filters change
-    goToPage(1);
-  }, [debouncedSearch, status, priority, category]);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Tickets
-        </h1>
-
-        <p className="mt-1 text-slate-500">
-          View and manage support tickets.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">Tickets</h1>
+        <p className="mt-1 text-slate-500">View and manage support tickets.</p>
       </div>
 
       {/* Main Card */}
@@ -141,56 +172,42 @@ function Tickets() {
           </div>
 
           {/* Status */}
-          <div>
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Status</option>
-              <option value="OPEN">Open</option>
-              <option value="PENDING">Pending</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="CLOSED">Closed</option>
-            </select>
-          </div>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
+          >
+            <option value="ALL">All Status</option>
+            <option value="OPEN">Open</option>
+            <option value="PENDING">Pending</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+          </select>
 
           {/* Priority */}
-          <div>
-            <select
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Priority</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
-            </select>
-          </div>
+          <select
+            value={priority}
+            onChange={(event) => setPriority(event.target.value)}
+            className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
+          >
+            <option value="ALL">All Priority</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
 
           {/* Category */}
-          <div>
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Category</option>
-              <option value="Authentication">
-                Authentication
-              </option>
-              <option value="Network">
-                Network
-              </option>
-              <option value="Email">
-                Email
-              </option>
-              <option value="Performance">
-                Performance
-              </option>
-            </select>
-          </div>
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="h-10 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500"
+          >
+            <option value="ALL">All Category</option>
+            <option value="Authentication">Authentication</option>
+            <option value="Network">Network</option>
+            <option value="Email">Email</option>
+            <option value="Performance">Performance</option>
+          </select>
 
           {/* Reset */}
           <button
@@ -200,6 +217,40 @@ function Tickets() {
           >
             Reset
           </button>
+
+                    {/* Column show/hide */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowColumnMenu((open) => !open)}
+              className="h-10 rounded-lg border border-slate-300 px-4 text-sm text-slate-700 hover:bg-slate-100"
+            >
+              Columns
+            </button>
+
+            {showColumnMenu && (
+              <div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+                {table
+                  .getAllLeafColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => (
+                    <label
+                      key={column.id}
+                      className="flex cursor-pointer items-center gap-2 py-1 text-sm text-slate-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={column.getIsVisible()}
+                        onChange={column.getToggleVisibilityHandler()}
+                      />
+                      {typeof column.columnDef.header === 'string'
+                        ? column.columnDef.header
+                        : column.id}
+                    </label>
+                  ))}
+              </div>
+            )}
+          </div>
 
           {/* Create Ticket */}
           <Link
@@ -212,8 +263,8 @@ function Tickets() {
 
         {/* Ticket Count */}
         <div className="mt-5 text-sm text-slate-500">
-          Showing {paginatedItems.length} of{' '}
-          {filteredTickets.length} tickets
+          Showing {table.getRowModel().rows.length} of {filteredCount} tickets
+          {isFetching && ' · Refreshing…'}
         </div>
 
         {/* Bulk toolbar: only shows when something is ticked */}
@@ -253,133 +304,53 @@ function Tickets() {
           </div>
         )}
 
-        {/* Empty State */}
-        {paginatedItems.length === 0 ? (
-          <div className="mt-5">
-            <EmptyState message="No matching tickets found." />
-          </div>
+        {/* Table, or the empty message when nothing matches */}
+        {filteredCount === 0 ? (
+          <EmptyState message="No matching tickets found." />
         ) : (
-          /* Ticket Table */
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-sm">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-slate-500">
-                <tr>
-                  <th className="px-3 py-3 w-8">
-                    <input
-                      type="checkbox"
-                      checked={allVisibleSelected}
-                      onChange={() =>
-                        allVisibleSelected
-                          ? dispatch(clearSelectedTickets())
-                          : dispatch(selectAllVisibleTickets(visibleIds))
-                      }
-                    />
-                  </th>
-                  <th className="px-3 py-3">ID</th>
-                  <th className="px-3 py-3">Subject</th>
-                  <th className="px-3 py-3">Category</th>
-                  <th className="px-3 py-3">Priority</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Change Status</th>
-                  <th className="px-3 py-3">Agent</th>
-                  <th className="px-3 py-3">Action</th>
-                </tr>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        onClick={header.column.getToggleSortingHandler()}
+                        className={`px-3 py-3 ${
+                          header.column.getCanSort()
+                            ? 'cursor-pointer select-none'
+                            : ''
+                        }`}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted()] ??
+                          ''}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
               </thead>
 
               <tbody>
-                {paginatedItems.map((ticket) => (
+                {table.getRowModel().rows.map((row) => (
                   <tr
-                    key={ticket.id}
-                    className="border-b border-slate-100 hover:bg-slate-50"
+                    key={row.id}
+                    className={`border-b border-slate-100 hover:bg-slate-50 ${
+                      row.getIsSelected() ? 'bg-blue-50' : ''
+                    }`}
                   >
-
-                    {/* first cell in the row */}
-                    <td className="px-3 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedTicketIds.includes(ticket.id)}
-                        onChange={() => dispatch(toggleTicketSelection(ticket.id))}
-                      />
-                    </td>
-
-                    {/* Ticket ID */}
-                    <td className="px-3 py-3 font-medium">
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {ticket.id}
-                      </Link>
-                    </td>
-
-                    {/* Subject */}
-                    <td className="px-3 py-3">
-                      {ticket.subject}
-                    </td>
-
-                    {/* Category */}
-                    <td className="px-3 py-3">
-                      {ticket.category}
-                    </td>
-
-                    {/* Priority */}
-                    <td className="px-3 py-3">
-                      {ticket.priority}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-3 py-3">
-                      <StatusBadge status={ticket.status} />
-                    </td>
-
-                    <td className="px-3 py-3">
-                      <select
-                        value={ticket.status}
-                        onChange={(event) =>
-                          dispatch(changeTicketStatus({ ticketId: ticket.id, newStatus: event.target.value }))
-                        }
-                        className="h-8 rounded-md border border-slate-300 px-2 text-xs"
-                      >
-                        {TICKET_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Agent */}
-                    <td className="px-3 py-3">
-                      {ticket.agent}
-                    </td>
-
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link
-                        to={`/tickets/${ticket.id}/edit`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Edit
-                      </Link>
-                       <button
-                        type="button"
-                        onClick={() => {
-                          const confirmed = window.confirm(
-                            `Are you sure you want to delete ${ticket.id}?`
-                          );
-
-                          if (confirmed) {
-                            dispatch(deleteTicket(ticket.id));
-                          }
-                        }}
-                        className="text-sm font-medium text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                      </div>
-                      
-                     
-                    </td>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-3 py-3">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -388,39 +359,30 @@ function Tickets() {
         )}
 
         {/* Pagination */}
-        {filteredTickets.length > 0 && (
-          <div className="mt-5 flex items-center justify-end gap-4">
-            <button
-              type="button"
-              onClick={previousPage}
-              disabled={currentPage === 1}
-              className={`rounded-lg border border-slate-300 px-4 py-2 text-sm ${
-                currentPage === 1
-                  ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              Previous
-            </button>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="rounded-md border px-3 py-1.5 disabled:opacity-40"
+          >
+            Previous
+          </button>
 
-            <span className="text-sm text-slate-600">
-              Page {currentPage} of {totalPages}
-            </span>
+          <span>
+            Page {table.getState().pagination.pageIndex + 1} of{' '}
+            {table.getPageCount() || 1}
+          </span>
 
-            <button
-              type="button"
-              onClick={nextPage}
-              disabled={currentPage === totalPages}
-              className={`rounded-lg border border-slate-300 px-4 py-2 text-sm ${
-                currentPage === totalPages
-                  ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="rounded-md border px-3 py-1.5 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
