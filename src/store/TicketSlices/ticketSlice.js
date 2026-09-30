@@ -35,6 +35,11 @@ const ticketSlice = createSlice({
                 (selectedId) => selectedId !== action.payload
             );
         },
+        unselectTicket: (state, action) => {
+            state.selectedTicketIds = state.selectedTicketIds.filter(
+                (id) => id !== action.payload
+            );
+        },
         changeTicketStatus: (state, action) => {
             const { ticketId, newStatus } = action.payload;
             const ticket = state.tickets.find(ticket => ticket.id === ticketId);
@@ -67,6 +72,6 @@ const ticketSlice = createSlice({
         },
     },
 })
-export const { selectTicket, createTicket, updateTicket, deleteTicket, changeTicketStatus, toggleTicketSelection, selectAllVisibleTickets, clearSelectedTickets, bulkUpdateStatus, setSelectedTickets } = ticketSlice.actions;
+export const { selectTicket, createTicket, updateTicket, deleteTicket, changeTicketStatus, toggleTicketSelection, selectAllVisibleTickets, clearSelectedTickets, bulkUpdateStatus, setSelectedTickets, unselectTicket } = ticketSlice.actions;
 
 export default ticketSlice.reducer;

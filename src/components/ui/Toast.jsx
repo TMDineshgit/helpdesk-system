@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import useNotificationStore from '../../store/useNotificationStore';
 
 function Toast() {
@@ -5,6 +6,15 @@ function Toast() {
     notifications,
     removeNotification,
   } = useNotificationStore();
+
+  useEffect(() => {
+    const timers = notifications.map((notification) =>
+      setTimeout(() => removeNotification(notification.id), notification.duration ?? 3000)
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, [notifications, removeNotification]);
+
 
   if (notifications.length === 0) {
     return null;

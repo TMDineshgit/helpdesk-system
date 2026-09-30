@@ -21,13 +21,19 @@ import {
 } from '../store/TicketSlices/ticketSelectors';
 import { useTickets } from '../hooks/useTickets';
 import {
-  changeTicketStatus,
-  bulkUpdateStatus,
   clearSelectedTickets,
-  deleteTicket, setSelectedTickets
+  setSelectedTickets,
+  unselectTicket,
 } from '../store/TicketSlices/ticketSlice';
-
+import {
+  useChangeTicketStatus,
+  useDeleteTicket,
+  useBulkUpdateStatus,
+} from '../hooks/useTicketMutation';
 import { TICKET_STATUSES } from '../data/ticketOptions';
+
+import { useAuth } from '../context/AuthContext';
+import usePermissions from '../hooks/usePermissions';
 
 function Tickets() {
   const dispatch = useDispatch();
@@ -35,6 +41,8 @@ function Tickets() {
 
   // Redux: ticket data + checkbox selection
   //const tickets = useSelector(selectAllTickets);
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions(user?.role);
   const {
     data: tickets = EMPTY_TICKETS,
     isPending,
@@ -43,6 +51,11 @@ function Tickets() {
     isFetching,
     refetch,
   } = useTickets();
+
+  const { mutate: changeStatusMutate } = useChangeTicketStatus();
+  const { mutate: deleteMutate } = useDeleteTicket();
+  const bulkMutation = useBulkUpdateStatus();
+
   const selectedTicketIds = useSelector(selectSelectedTicketIds);
 
   // Local state: which status is chosen in the bulk dropdown
@@ -72,16 +85,16 @@ function Tickets() {
   const columns = useMemo(
     () =>
       getTicketColumns({
-        onChangeStatus: (ticketId, newStatus) =>
-          dispatch(changeTicketStatus({ ticketId, newStatus })),
-          onDelete: (id) => {
-          // Ask first: delete can't be undone
+        onChangeStatus: (id, newStatus) =>
+          changeStatusMutate({ id, status: newStatus }),
+        onDelete: (id) => {
           if (window.confirm(`Delete ticket ${id}?`)) {
-            dispatch(deleteTicket(id));
+            deleteMutate(id, { onSuccess: () => dispatch(unselectTicket(id)) });
           }
         },
+        canDelete: hasPermission('ticket:delete'),
       }),
-    [dispatch]
+    [changeStatusMutate, deleteMutate, dispatch, hasPermission]
   );
 
   // Turn Zustand dropdown values into TanStack's filter format
@@ -288,10 +301,16 @@ function Tickets() {
 
             <button
               type="button"
-              onClick={() => dispatch(bulkUpdateStatus(bulkStatus))}
-              className="h-9 rounded-lg bg-blue-600 px-4 text-white hover:bg-blue-700"
+              disabled={bulkMutation.isPending}
+              onClick={() =>
+                bulkMutation.mutate(
+                  { ids: selectedTicketIds, status: bulkStatus },
+                  { onSuccess: () => dispatch(clearSelectedTickets()) }
+                )
+              }
+              className="h-9 rounded-lg bg-blue-600 px-4 text-white hover:bg-blue-700 disabled:opacity-60"
             >
-              Apply status to selected
+              {bulkMutation.isPending ? 'Applying…' : 'Apply status to selected'}
             </button>
 
             <button

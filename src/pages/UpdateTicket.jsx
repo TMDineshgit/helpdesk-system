@@ -1,32 +1,40 @@
-import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { updateTicket } from '../store/TicketSlices/ticketSlice';
-import { selectTicketById } from '../store/TicketSlices/ticketSelectors';
 import TicketsForm from '../components/tickets/TicektsForm';
 import { toAttachmentMeta } from '../utils/attachmentRules';
+import { useTicket } from '../hooks/useTickets';
+import { useUpdateTicket } from '../hooks/useTicketMutation';
 
 function UpdateTicket() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { ticketId } = useParams();
 
-  const ticket = useSelector((state) => selectTicketById(state, ticketId));
+  const { data: ticket, isPending, isError, error } = useTicket(ticketId);
+  const updateMutation = useUpdateTicket();
 
-  if (!ticket) {
-    return <div className="p-6">Ticket not found.</div>;
+  // The form must only appear AFTER the ticket has loaded, because the
+  // form reads its starting values once, when it first appears.
+  if (isPending) {
+    return <div className="p-6 text-slate-500">Loading ticket…</div>;
   }
 
-  const onSubmit = (data) => {
+  if (isError) {
+    return <div className="p-6 text-red-600">{error.message}</div>;
+  }
+
+  const onSubmit = async (data) => {
     const { attachments, ...ticketData } = data;
-    dispatch(
-      updateTicket({ 
-        ...ticket, 
-        ...ticketData, 
-        attachments: [...(ticket.attachments || []), ...toAttachmentMeta(attachments)], 
-      })
-    );
-    navigate('/tickets');
+
+    try {
+      await updateMutation.mutateAsync({
+        ...ticket,
+        ...ticketData,
+        attachments: [...(ticket.attachments || []), ...toAttachmentMeta(attachments)],
+      });
+      navigate('/tickets');
+    } catch {
+      // error is shown below through updateMutation.isError
+    }
   };
 
   return (
@@ -36,6 +44,12 @@ function UpdateTicket() {
       </div>
 
       <div className="bg-white p-6 shadow sm:rounded-lg">
+        {updateMutation.isError && (
+          <p className="mb-4 text-sm text-red-600">
+            Could not save the changes: {updateMutation.error.message}
+          </p>
+        )}
+
         <TicketsForm
           defaultValues={{
             subject: ticket.subject,

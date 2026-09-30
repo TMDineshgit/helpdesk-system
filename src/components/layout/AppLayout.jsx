@@ -4,7 +4,6 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import Toast from '../ui/Toast';
 
 function AppLayout() {
   
@@ -28,7 +27,6 @@ function AppLayout() {
           </button>
         </main>
       </div>
-      <Toast />
     </div>
   );
 }

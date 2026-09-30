@@ -8,7 +8,7 @@ import IndeterminateCheckbox from '../ui/IndeterminateCheckbox';
 
 const columnHelper = createColumnHelper();
 
-export const getTicketColumns = ({ onChangeStatus, onDelete }) => [
+export const getTicketColumns = ({ onChangeStatus, onDelete, canDelete }) => [
 
  columnHelper.display({
     id: 'select',
@@ -103,7 +103,7 @@ export const getTicketColumns = ({ onChangeStatus, onDelete }) => [
           >
             Edit
           </Link>
-
+          {canDelete && (
           <button
             type="button"
             onClick={() => onDelete(ticket.id)}
@@ -111,6 +111,7 @@ export const getTicketColumns = ({ onChangeStatus, onDelete }) => [
           >
             Delete
           </button>
+           )}
         </div>
       );
     },
