@@ -8,6 +8,7 @@ function Header() {
   const { logout, user } = useAuth();
 
   const toggleSidebar = useUiStore((state) => state.toggleSidebar);
+  const isSidebarOpen = useUiStore((state) => state.isSidebarOpen);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
@@ -18,7 +19,7 @@ function Header() {
             onClick={toggleSidebar}
             className="rounded-lg p-2 hover:bg-slate-100 cursor-pointer"
           >
-            {toggleSidebar ? <SidebarClose size={20} /> : <SidebarOpen size={20} />}
+            {isSidebarOpen ? <SidebarClose size={20} /> : <SidebarOpen size={20} />}
           </button>
         </div>
         <div>
