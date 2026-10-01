@@ -1,3 +1,5 @@
+import { uploadFile } from '../services/s3Api';
+
 export const ALLOWED_FILE_TYPES = [
   'image/png',
   'image/jpeg',
@@ -17,10 +19,15 @@ export const formatFileSize = (bytes) =>
 
 // Turns real File objects into plain data we can safely keep in Redux.
 // This is our "mock upload": we only remember the details, not the file itself.
-export const toAttachmentMeta = (fileList) =>
-  Array.from(fileList || []).map((file) => ({
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    uploadedAt: new Date().toISOString(),
-  }));
+// export const toAttachmentMeta = (fileList) =>
+//   Array.from(fileList || []).map((file) => ({
+//     name: file.name,
+//     size: file.size,
+//     type: file.type,
+//     uploadedAt: new Date().toISOString(),
+//   }));
+
+export async function uploadAttachments(ticketId, fileList) {
+  const files = Array.from(fileList || []);
+  return Promise.all(files.map((file) => uploadFile(ticketId, file)));
+}

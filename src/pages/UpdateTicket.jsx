@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 
 import TicketsForm from '../components/tickets/TicektsForm';
-import { toAttachmentMeta } from '../utils/attachmentRules';
+import { uploadAttachments } from '../utils/attachmentRules';
 import { useTicket } from '../hooks/useTickets';
 import { useUpdateTicket } from '../hooks/useTicketMutation';
 
@@ -24,12 +24,12 @@ function UpdateTicket() {
 
   const onSubmit = async (data) => {
     const { attachments, ...ticketData } = data;
-
+    const newAttachments = await uploadAttachments(ticket.id, attachments);
     try {
       await updateMutation.mutateAsync({
         ...ticket,
         ...ticketData,
-        attachments: [...(ticket.attachments || []), ...toAttachmentMeta(attachments)],
+        attachments: [...(ticket.attachments || []), ...newAttachments],
       });
       navigate('/tickets');
     } catch {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import useNotificationStore from '../store/useNotificationStore';
 import { loginApi, logoutApi, refreshSessionApi } from '../services/authApi';
 import { decodeToken, isTokenExpired } from '../utils/jwt';
+import { setToken, setUnauthorizedHandler } from '../services/tokenStore';
 
 const AuthContext = createContext();
 
@@ -79,6 +80,22 @@ export const AuthProvider = ({ children }) => {
     return () => clearTimeout(refreshTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idToken]);
+
+
+    useEffect(() => {
+      setToken(idToken);
+    }, [idToken]);
+
+    useEffect(() => {
+      setUnauthorizedHandler(() => {
+        logout();
+        addNotification({
+          type: 'error',
+          title: 'Signed out',
+          message: 'Your session is no longer valid. Please log in again.',
+        });
+      });
+    }, []);
 
   const user = useMemo(() => buildUserFromIdToken(idToken), [idToken]);
 

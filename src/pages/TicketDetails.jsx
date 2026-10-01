@@ -12,6 +12,7 @@ import { formatFileSize } from '../utils/attachmentRules';
 import { TICKET_STATUSES, AGENTS } from '../data/ticketOptions';
 import { useAuth } from '../context/AuthContext';
 import usePermissions from '../hooks/usePermissions';
+import { getDownloadUrl } from '../services/s3Api';
 
 function TicketDetails() {
 
@@ -111,13 +112,23 @@ function TicketDetails() {
           <strong>Description:</strong> {ticket.description}
         </p>
 
-        {ticket.attachments?.length > 0 && (
+                {ticket.attachments?.length > 0 && (
           <div className="sm:col-span-2">
             <strong>Attachments:</strong>
             <ul className="mt-1 list-disc pl-6 text-sm text-slate-700">
               {ticket.attachments.map((file) => (
                 <li key={file.name}>
-                  {file.name} ({formatFileSize(file.size)})
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:underline"
+                    onClick={async () => {
+                      const url = await getDownloadUrl(file.key);
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    {file.name}
+                  </button>{' '}
+                  ({formatFileSize(file.size)})
                 </li>
               ))}
             </ul>

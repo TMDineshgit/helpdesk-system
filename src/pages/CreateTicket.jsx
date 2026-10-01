@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import TicketsForm from '../components/tickets/TicektsForm';
-import { toAttachmentMeta } from '../utils/attachmentRules';
+import { uploadAttachments } from '../utils/attachmentRules';
 import { useCreateTicket } from '../hooks/useTicketMutation';
 
 function CreateTicket() {
@@ -9,24 +9,27 @@ function CreateTicket() {
   const createMutation = useCreateTicket();
 
   const onSubmit = async (data) => {
-    const { attachments, ...ticketData } = data;
-
-    const newTicket = {
-      id: `TKT-${Date.now()}`,
-      ...ticketData,
-      attachments: toAttachmentMeta(attachments),
-      status: 'OPEN',
-      agent: 'Unassigned',
-      slaBreached: false,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
     try {
+      const { attachments, ...ticketData } = data;
+
+      const newTicket = {
+        id: `TKT-${Date.now()}`,
+        ...ticketData,
+        status: 'OPEN',
+        agent: 'Unassigned',
+        slaBreached: false,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+
+      newTicket.attachments = await uploadAttachments(newTicket.id, attachments);
+      
       await createMutation.mutateAsync(newTicket);
       navigate('/tickets');
+
     } catch {
       // Nothing to do here: the error message is shown below through
       // createMutation.isError
+      console.error('Create ticket failed:', error);
     }
   };
 
