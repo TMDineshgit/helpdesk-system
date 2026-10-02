@@ -8,92 +8,78 @@ import {
 import { Link } from 'react-router-dom';
 import StatCard from '../components/ui/StatCard';
 import StatusBadge from '../components/ui/StatusBadge';
-import { mockTickets } from '../data/mockTickets';
+import { useTickets } from '../hooks/useTickets';
 import useDebounce from '../hooks/useDebounce';
-import  useModal  from '../hooks/useModal';
+import useModal from '../hooks/useModal';
 import usePagination from '../hooks/usePagination';
 
+const EMPTY_TICKETS = [];
+
 function Dashboard() {
+  const {
+    data: tickets = EMPTY_TICKETS,
+    isPending,
+    isError,
+    error,
+  } = useTickets();
+
   const ticketStats = useMemo(() => {
     return {
-      open: mockTickets.filter((ticket) => ticket.status === 'OPEN').length,
-      pending: mockTickets.filter((ticket) => ticket.status === 'PENDING').length,
-      resolved: mockTickets.filter((ticket) => ticket.status === 'RESOLVED').length,
-      highPriority: mockTickets.filter((ticket) => ticket.priority === 'HIGH').length,
-      slaBreached: mockTickets.filter((ticket) => ticket.slaBreached).length,
+      open: tickets.filter((ticket) => ticket.status === 'OPEN').length,
+      pending: tickets.filter((ticket) => ticket.status === 'PENDING').length,
+      resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
+      highPriority: tickets.filter((ticket) => ticket.priority === 'HIGH').length,
+      slaBreached: tickets.filter((ticket) => ticket.slaBreached).length,
     };
-  }, []);
+  }, [tickets]);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const { isOpen, openModal, closeModal } = useModal();
-  
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
-  const filteredTickets = mockTickets.filter((ticket) =>
-    ticket.subject
-      .toLowerCase()
-      .includes(debouncedSearchTerm.toLowerCase()),
+  // Newest first, so "Recent Tickets" actually shows recently created ones
+  const recentTickets = useMemo(
+    () => [...tickets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    [tickets]
   );
 
-  const { currentPage, totalPages, paginatedItems, nextPage, previousPage, goToPage } = usePagination(filteredTickets, 5);  
+  const [searchTerm, setSearchTerm] = useState('');
+  const { isOpen, openModal, closeModal } = useModal();
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const filteredTickets = recentTickets.filter((ticket) =>
+    ticket.subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+  );
+
+  const { currentPage, totalPages, paginatedItems, nextPage, previousPage, goToPage } =
+    usePagination(filteredTickets, 5);
 
   const handleSearchChange = useCallback((event) => {
     setSearchTerm(event.target.value);
   }, []);
 
+  if (isPending) {
+    return <div className="p-6 text-slate-500">Loading dashboard…</div>;
+  }
+
+  if (isError) {
+    return <div className="p-6 text-red-600">{error.message}</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Dashboard
-        </h1>
-
-        <p className="mt-1 text-slate-500">
-          Overview of your support operations.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="mt-1 text-slate-500">Overview of your support operations.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          title="Open Tickets"
-          value={ticketStats.open}
-          description="Need attention"
-          icon={ClipboardList}
-        />
-
-        <StatCard
-          title="Pending Tickets"
-          value={ticketStats.pending}
-          description="Waiting for action"
-          icon={Clock}
-        />
-
-        <StatCard
-          title="Resolved Tickets"
-          value={ticketStats.resolved}
-          description="Successfully resolved"
-          icon={CheckCircle}
-        />
-
-        <StatCard
-          title="High Priority"
-          value={ticketStats.highPriority}
-          description="Require attention"
-          icon={AlertTriangle}
-        />
-
-         <StatCard
-          title="SLA Breached"
-          value={ticketStats.slaBreached}
-          description="Missed deadlines"
-          icon={Clock}
-        />
+        <StatCard title="Open Tickets" value={ticketStats.open} description="Need attention" icon={ClipboardList} />
+        <StatCard title="Pending Tickets" value={ticketStats.pending} description="Waiting for action" icon={Clock} />
+        <StatCard title="Resolved Tickets" value={ticketStats.resolved} description="Successfully resolved" icon={CheckCircle} />
+        <StatCard title="High Priority" value={ticketStats.highPriority} description="Require attention" icon={AlertTriangle} />
+        <StatCard title="SLA Breached" value={ticketStats.slaBreached} description="Missed deadlines" icon={Clock} />
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Tickets by Status
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900">Tickets by Status</h2>
 
         <div className="mt-5 space-y-4">
           <div>
@@ -101,13 +87,10 @@ function Dashboard() {
               <span>Open</span>
               <span>{ticketStats.open}</span>
             </div>
-
             <div className="h-3 rounded-full bg-slate-100">
               <div
                 className="h-3 rounded-full bg-blue-500"
-                style={{
-                  width: `${(ticketStats.open / mockTickets.length) * 100}%`,
-                }}
+                style={{ width: `${(ticketStats.open / tickets.length) * 100}%` }}
               />
             </div>
           </div>
@@ -117,13 +100,10 @@ function Dashboard() {
               <span>Pending</span>
               <span>{ticketStats.pending}</span>
             </div>
-
             <div className="h-3 rounded-full bg-slate-100">
               <div
                 className="h-3 rounded-full bg-yellow-500"
-                style={{
-                  width: `${(ticketStats.pending / mockTickets.length) * 100}%`,
-                }}
+                style={{ width: `${(ticketStats.pending / tickets.length) * 100}%` }}
               />
             </div>
           </div>
@@ -133,41 +113,32 @@ function Dashboard() {
               <span>Resolved</span>
               <span>{ticketStats.resolved}</span>
             </div>
-
             <div className="h-3 rounded-full bg-slate-100">
               <div
                 className="h-3 rounded-full bg-green-500"
-                style={{
-                  width: `${(ticketStats.resolved / mockTickets.length) * 100}%`,
-                }}
+                style={{ width: `${(ticketStats.resolved / tickets.length) * 100}%` }}
               />
             </div>
           </div>
-          
+
           <div>
             <div className="mb-1 flex justify-between text-sm">
               <span>SLA Breached</span>
               <span>{ticketStats.slaBreached}</span>
             </div>
-
             <div className="h-3 rounded-full bg-slate-100">
               <div
                 className="h-3 rounded-full bg-red-500"
-                style={{
-                  width: `${(ticketStats.slaBreached / mockTickets.length) * 100}%`,
-                }}
+                style={{ width: `${(ticketStats.slaBreached / tickets.length) * 100}%` }}
               />
             </div>
           </div>
-
         </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between flex-wrap border-b border-slate-200 pb-3 mb-3">
-           <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Recent Tickets
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Recent Tickets</h2>
           <div>
             <input
               type="text"
@@ -178,7 +149,6 @@ function Dashboard() {
             />
           </div>
         </div>
-       
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-left text-sm">
@@ -193,24 +163,14 @@ function Dashboard() {
 
             <tbody>
               {paginatedItems.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="border-b border-slate-100"
-                >
+                <tr key={ticket.id} className="border-b border-slate-100">
                   <td className="px-3 py-3 font-medium">
-                    <Link to={`/tickets/${ticket.id}`} className="text-blue-500 hover:underline"> 
+                    <Link to={`/tickets/${ticket.id}`} className="text-blue-500 hover:underline">
                       {ticket.id}
                     </Link>
                   </td>
-
-                  <td className="px-3 py-3">
-                    {ticket.subject}
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {ticket.priority}
-                  </td>
-
+                  <td className="px-3 py-3">{ticket.subject}</td>
+                  <td className="px-3 py-3">{ticket.priority}</td>
                   <td className="px-3 py-3">
                     <StatusBadge status={ticket.status} />
                   </td>
@@ -218,6 +178,7 @@ function Dashboard() {
               ))}
             </tbody>
           </table>
+
           <div className="mt-4 flex items-center justify-between">
             <div>
               <button
@@ -226,7 +187,7 @@ function Dashboard() {
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white"
               >
                 Modal
-            </button>
+              </button>
             </div>
             <div>
               <div className="mt-5 flex items-center justify-between gap-3">
@@ -254,21 +215,14 @@ function Dashboard() {
               </div>
             </div>
           </div>
-          
         </div>
       </div>
+
       {isOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40">
           <div className="rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-xl font-bold">
-              Ticket Actions
-            </h2>
-
-            <button
-              type="button"
-              onClick={closeModal}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-white"
-            >
+            <h2 className="mb-4 text-xl font-bold">Ticket Actions</h2>
+            <button type="button" onClick={closeModal} className="rounded-lg bg-slate-900 px-4 py-2 text-white">
               Close
             </button>
           </div>
