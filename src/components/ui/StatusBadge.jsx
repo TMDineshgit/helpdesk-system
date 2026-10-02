@@ -1,4 +1,4 @@
-
+import { memo } from 'react';
 const statusStyles = {
   OPEN: 'bg-blue-100 text-blue-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
@@ -19,4 +19,4 @@ function StatusBadge({ status }) {
   );
 }
 
-export default StatusBadge;
+export default memo(StatusBadge);

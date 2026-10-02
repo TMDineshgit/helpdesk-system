@@ -7,34 +7,16 @@ export async function uploadFile(ticketId, file) {
     body: JSON.stringify({ ticketId, fileName: file.name, fileType: file.type }),
   });
 
-   console.log('Presigned URL received:', {
-    fileName: file.name,
-    fileKey,
-    uploadUrl,
-  });
-
-
   // 2. Upload the real bytes STRAIGHT to S3 — not through our API at all
   const uploadResponse = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    //headers: { 'Content-Type': file.type },
     body: file,
   });
 
   if (!uploadResponse.ok) {
-    const errorText = await uploadResponse.text();
-
-    console.error('S3 upload failed:', {
-        status: uploadResponse.status,
-        statusText: uploadResponse.statusText,
-        response: errorText,
-        fileName: file.name,
-    });
-
-    throw new Error(
-        `S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`
-    );
- }
+    throw new Error(`Failed to upload ${file.name}`);
+  }
 
   return {
     name: file.name,
